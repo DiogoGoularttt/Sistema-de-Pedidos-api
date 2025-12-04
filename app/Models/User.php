@@ -46,7 +46,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'role' => UserTypeEnum::class,
+            'role' => \App\Enums\UserTypeEnum::class,
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
