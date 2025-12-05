@@ -2,75 +2,146 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use App\Models\RefreshToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    /**
+     * Register a new user
+     */
+    public function register(RegisterRequest $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'phone' => 'required|string|max:15',
-            'role' => 'required|in:admin,client',
-        ]);
+        $data = $request->validated();
 
         $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => bcrypt($data['password']),
-            'phone' => $data['phone'],
-            'role' => $data['role'],
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => Hash::make($data['password']),
+            'phone'    => $data['phone'],
+            'role'     => 'client',
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Access Token
+        $accessToken = $user->createToken('auth_token')->plainTextToken;
+
+        // Refresh Token
+        $refreshToken = Str::random(64);
+
+        RefreshToken::create([
+            'user_id'    => $user->id,
+            'token'      => hash('sha256', $refreshToken),
+            'expires_at' => now()->addDays(30),
+        ]);
 
         return response()->json([
             'message' => 'Usuário criado com sucesso!',
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role->value,
-            ]
+            'data' => [
+                'token'          => $accessToken,
+                'refresh_token'  => $refreshToken,
+                'user' => [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role'  => 'client',
+                ],
+            ],
         ], 201);
     }
 
+    /**
+     * Login
+     */
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+            'email'    => 'required|email',
+            'password' => 'required|string|min:6',
         ]);
 
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
-                'message' => 'Credenciais inválidas'
+                'message' => 'Credenciais inválidas',
+                'errors' => [
+                    'email' => ['E-mail ou senha incorretos']
+                ]
             ], 401);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // criar novo access token
+        $accessToken = $user->createToken('auth_token')->plainTextToken;
+
+        // gerar novo refresh token
+        $refreshToken = Str::random(64);
+
+        RefreshToken::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'token'      => hash('sha256', $refreshToken),
+                'expires_at' => now()->addDays(30),
+            ]
+        );
 
         return response()->json([
             'message' => 'Login realizado com sucesso',
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'role' => $user->role->value,
-            ]
+            'data' => [
+                'token'          => $accessToken,
+                'refresh_token'  => $refreshToken,
+                'user' => [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone,
+                    'role'  => $user->role->value,
+                ],
+            ],
         ]);
     }
 
+    /**
+     * Refresh Token
+     */
+    public function refresh(Request $request)
+    {
+        $request->validate([
+            'refresh_token' => 'required|string'
+        ]);
+
+        $hashed = hash('sha256', $request->refresh_token);
+
+        $token = RefreshToken::where('token', $hashed)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (! $token) {
+            return response()->json([
+                'message' => 'Refresh Token inválido ou expirado'
+            ], 401);
+        }
+
+        $user = $token->user;
+
+        // novo access token
+        $accessToken = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Token atualizado com sucesso',
+            'data' => [
+                'token' => $accessToken
+            ],
+        ]);
+    }
+
+    /**
+     * Logout
+     */
     public function logout(Request $request)
     {
         $request->user()->tokens()->delete();

@@ -4,50 +4,61 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// ----------------------
-// Rotas públicas
-// ----------------------
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+/*
+|--------------------------------------------------------------------------
+| Rotas de Autenticação
+|--------------------------------------------------------------------------
+*/
 
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']); // sem middleware
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
-// ----------------------
-// Rotas autenticadas
-// ----------------------
-Route::middleware('auth:sanctum')->group(function () {
-
-    // Info do usuário logado
-    Route::middleware('auth:sanctum')->get('/me', function (Request $request) {
-        return response()->json($request->user());
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', function (Request $request) {
+            return $request->user();
+        });
+        Route::post('/logout', [AuthController::class, 'logout']);
     });
-
-    // Logout
-    Route::post('/logout', [AuthController::class, 'logout']);
 });
 
 
-// ----------------------
-// ADMIN
-// ----------------------
+
+
+/*
+|--------------------------------------------------------------------------
+| Rotas Admin
+|--------------------------------------------------------------------------
+*/
 Route::prefix('admin')
     ->middleware(['auth:sanctum', 'role:admin'])
     ->group(function () {
+
         Route::get('/dashboard', function () {
-            return response()->json(['message' => 'Bem-vindo ao Dashboard Admin']);
+            return response()->json([
+                'message' => 'Bem-vindo ao Dashboard Admin'
+            ]);
         });
     });
 
 
-// ----------------------
-// CLIENT
-// ----------------------
+/*
+|--------------------------------------------------------------------------
+| Rotas Client
+|--------------------------------------------------------------------------
+*/
 Route::middleware(['auth:sanctum', 'role:client'])
     ->group(function () {
+
         Route::get('/menu', function () {
-            return response()->json(['message' => 'Aqui está o cardápio']);
+            return response()->json([
+                'message' => 'Aqui está o cardápio'
+            ]);
         });
 
         Route::get('/orders', function () {
-            return response()->json(['message' => 'Aqui estão seus pedidos']);
+            return response()->json([
+                'message' => 'Aqui estão seus pedidos'
+            ]);
         });
     });
