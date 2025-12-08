@@ -41,7 +41,7 @@
 
         </div>
 
-        <p class="text-center text-sm text-gray-600 mt-6">Fluxon Digital © {{ date('Y') }}</p>
+        <p class="text-center text-sm text-gray-600 mt-6">Fluxon Digital © {{ date('Y') }}. Todos os direitos reservados.</p>
     </div>
 
 </body>
