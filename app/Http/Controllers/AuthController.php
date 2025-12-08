@@ -26,6 +26,8 @@ class AuthController extends Controller
             'role'     => 'client',
         ]);
 
+        $user->sendEmailVerificationNotification();
+
         // Access Token
         $accessToken = $user->createToken('auth_token')->plainTextToken;
 
@@ -73,6 +75,16 @@ class AuthController extends Controller
                     'email' => ['E-mail ou senha incorretos']
                 ]
             ], 401);
+        }
+
+        // VERIFICAÇÃO DE E-MAIL
+        if (! $user->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'É necessário verificar seu e-mail antes de fazer login.',
+                'errors'  => [
+                    'email' => ['E-mail não verificado. Verifique sua caixa de entrada.']
+                ]
+            ], 403);
         }
 
         // criar novo access token

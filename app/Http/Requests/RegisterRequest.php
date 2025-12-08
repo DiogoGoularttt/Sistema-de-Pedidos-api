@@ -40,6 +40,7 @@ class RegisterRequest extends FormRequest
             'email.email' => 'Informe um e-mail válido.',
             'email.unique' => 'Este e-mail já está em uso.',
             'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
+            'password.regex' => 'Sua senha deve ter pelo menos 8 caracteres, incluindo letra maiúscula, letra minúscula e número.',
             'phone.regex' => 'O telefone deve estar no formato (xx) xxxxx-xxxx.',
         ];
     }

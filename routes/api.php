@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\EmailVerificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,6 +24,19 @@ Route::prefix('auth')->group(function () {
 });
 
 
+/*
+|--------------------------------------------------------------------------
+| Verificação de E-mail
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware(['signed'])
+    ->name('verification.verify');
+
+Route::post('/email/resend', [EmailVerificationController::class, 'resend'])
+    ->middleware(['auth:sanctum'])
+    ->name('verification.resend');
 
 
 /*
