@@ -18,7 +18,8 @@ class AdminUserSeeder extends Seeder
                 'email' => env('ADMIN_EMAIL', 'admin@sistema.com'),
                 'password' => Hash::make(env('ADMIN_PASSWORD', 'admin123')),
                 'phone' => env('ADMIN_PHONE', '11999999999'),
-                'role' => UserTypeEnum::ADMIN
+                'role' => UserTypeEnum::ADMIN,
+                'email_verified_at' => now(),
             ]);
         }
     }
