@@ -64,53 +64,50 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string|min:6',
+            'remember' => 'boolean',
         ]);
 
         $user = User::where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            return response()->json([
-                'message' => 'Credenciais inválidas',
-                'errors' => [
-                    'email' => ['E-mail ou senha incorretos']
-                ]
-            ], 401);
+            return response()->json(['message' => 'Credenciais inválidas'], 401);
         }
 
-        // VERIFICAÇÃO DE E-MAIL
         if (! $user->hasVerifiedEmail()) {
             return response()->json([
-                'message' => 'É necessário verificar seu e-mail antes de fazer login.',
-                'errors'  => [
-                    'email' => ['E-mail não verificado. Verifique sua caixa de entrada.']
-                ]
+                'message' => 'Verifique seu e-mail antes de fazer login.'
             ], 403);
         }
 
-        // criar novo access token
-        $accessToken = $user->createToken('auth_token')->plainTextToken;
+        // Access Token (5 minutos)
+        $accessToken = $user->createToken(
+            'auth_token',
+            expiresAt: now()->addMinutes(5)
+        )->plainTextToken;
 
-        // gerar novo refresh token
+        // Refresh Token
         $refreshToken = Str::random(64);
+
+        $expiresAt = $request->boolean('remember')
+            ? now()->addDays(7)
+            : now()->addMinutes(30);
 
         RefreshToken::updateOrCreate(
             ['user_id' => $user->id],
             [
-                'token'      => hash('sha256', $refreshToken),
-                'expires_at' => now()->addDays(30),
+                'token' => hash('sha256', $refreshToken),
+                'expires_at' => $expiresAt,
             ]
         );
 
         return response()->json([
-            'message' => 'Login realizado com sucesso',
             'data' => [
-                'token'          => $accessToken,
-                'refresh_token'  => $refreshToken,
+                'token' => $accessToken,
+                'refresh_token' => $refreshToken,
                 'user' => [
                     'id'    => $user->id,
                     'name'  => $user->name,
                     'email' => $user->email,
-                    'phone' => $user->phone,
                     'role'  => $user->role->value,
                 ],
             ],
@@ -128,28 +125,28 @@ class AuthController extends Controller
 
         $hashed = hash('sha256', $request->refresh_token);
 
-        $token = RefreshToken::where('token', $hashed)
+        $refreshToken = RefreshToken::where('token', $hashed)
             ->where('expires_at', '>', now())
             ->first();
 
-        if (! $token) {
-            return response()->json([
-                'message' => 'Refresh Token inválido ou expirado'
-            ], 401);
+        if (! $refreshToken) {
+            return response()->json(['message' => 'Refresh token inválido'], 401);
         }
 
-        $user = $token->user;
+        $user = $refreshToken->user;
 
-        // novo access token
-        $accessToken = $user->createToken('auth_token')->plainTextToken;
+        $newAccessToken = $user->createToken(
+            'auth_token',
+            expiresAt: now()->addMinutes(5)
+        )->plainTextToken;
 
         return response()->json([
-            'message' => 'Token atualizado com sucesso',
             'data' => [
-                'token' => $accessToken
-            ],
+                'token' => $newAccessToken
+            ]
         ]);
     }
+
 
     /**
      * Logout
