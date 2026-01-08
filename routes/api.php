@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\UserAddressController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -82,4 +84,12 @@ Route::middleware(['auth:sanctum', 'role:client'])
                 'message' => 'Aqui estão seus pedidos'
             ]);
         });
+
+
+        Route::get('/profile', [ProfileController::class, 'show']);
+        Route::put('/profile', [ProfileController::class, 'update']);
+
+        Route::post('/profile/addresses', [UserAddressController::class, 'store']);
+        Route::put('/profile/addresses/{userAddress}', [UserAddressController::class, 'update']);
+        Route::delete('/profile/addresses/{userAddress}', [UserAddressController::class, 'destroy']);
     });
